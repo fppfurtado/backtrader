@@ -60,7 +60,7 @@ class BinanceStore(object):
         precision = step.find('1') - 1
         if precision > 0:
             return '{:0.0{}f}'.format(float(value), precision)
-        return floor(int(value))
+        return floor(value)
         
     def retry(func):
         @wraps(func)
@@ -98,27 +98,31 @@ class BinanceStore(object):
             raise err
     
     @retry
-    def create_order(self, symbol, side, type, size, price):
-        params = dict()
+    def create_order(self, symbol, side, type, size, price, **params):
+        if type == None: type = ORDER_TYPE_MARKET
+
+        if type != ORDER_TYPE_MARKET:
+            params.update({
+                'price': self.format_price(symbol, price)
+            })
+           
         if type in [ORDER_TYPE_LIMIT, ORDER_TYPE_STOP_LOSS_LIMIT]:
             params.update({
                 'timeInForce': TIME_IN_FORCE_GTC
             })
-        if type == ORDER_TYPE_STOP_LOSS:
+        elif type == ORDER_TYPE_STOP_LOSS:
             params.update({
                 'stopPrice': self.format_price(symbol, price)
             })
-        elif type != ORDER_TYPE_MARKET:
-            params.update({
-                'price': self.format_price(symbol, price)
-            })
-
+        
+        if size is not None: size = self.format_quantity(symbol, size)
+                
         return self.binance.create_order(
             symbol=symbol,
             side=side,
             type=type,
-            quantity=self.format_quantity(symbol, size),
-            newOrderRespType='RESULT',
+            quantity=size,
+            newOrderRespType='FULL',
             **params)
 
     def format_price(self, symbol, price):
