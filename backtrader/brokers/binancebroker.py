@@ -129,8 +129,8 @@ class BinanceBroker(BrokerBase):
         return self._submit(order)
 
     def cancel(self, order):
-        order_id = order.binance_order['orderId']
-        symbol = order.binance_order['symbol']
+        order_id = order.info['binance_id']
+        symbol = order.data.symbol
         self._store.cancel_order(symbol=symbol, order_id=order_id)
         
     def format_price(self, value):
