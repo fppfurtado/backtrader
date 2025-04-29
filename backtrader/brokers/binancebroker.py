@@ -51,11 +51,11 @@ class BinanceBroker(BrokerBase):
             raise msg
     
     def _submit(self, order):
-        type = self._ORDER_TYPES.get(order.exectype, be.ORDER_TYPE_MARKET)
+        exectype = self._ORDER_TYPES.get(order.exectype, be.ORDER_TYPE_MARKET)
         symbol = order.data.symbol
         side = be.SIDE_BUY if order.ordtype == Order.Buy else be.SIDE_SELL
         size = abs(order.size) if order.size else None
-        binance_order = self._store.create_order(symbol, side, type, size, order.price, **order.info)
+        binance_order = self._store.create_order(symbol, side, exectype, size, order.price, **order.info)
         
         order.info['binance_id'] = binance_order['orderId']
         order.executed.remsize = float(binance_order['executedQty'])
