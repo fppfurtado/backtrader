@@ -9,9 +9,6 @@ from binance.enums import *
 from binance.exceptions import BinanceAPIException
 from requests.exceptions import ConnectTimeout, ConnectionError
 
-from .binance_broker import BinanceBroker
-from .binance_feed import BinanceData
-
 
 class BinanceStore(object):
     _GRANULARITIES = {
@@ -52,7 +49,7 @@ class BinanceStore(object):
         self._min_order_in_target = {}
         self._tick_size = {}
 
-        self._broker = BinanceBroker(store=self)
+        self._broker = None
         self._data = None
         self._datas = {}
 
@@ -153,18 +150,6 @@ class BinanceStore(object):
         self._cash = free
         self._value = free + locked
 
-    def getbroker(self):
-        return self._broker
-
-    def getdata(self, **kwargs):  # timeframe, compression, start_date=None, LiveBars=True
-        symbol = kwargs['dataname']
-        tf = self.get_interval(kwargs['timeframe'], kwargs['compression'])
-        self.symbols.append(symbol)
-        self.get_filters(symbol=symbol)
-        if symbol not in self._datas:
-            self._datas[f"{symbol}{tf}"] = BinanceData(store=self, **kwargs)  # timeframe=timeframe, compression=compression, start_date=start_date, LiveBars=LiveBars
-        return self._datas[f"{symbol}{tf}"]
-        
     def get_filters(self, symbol):
         symbol_info = self.get_symbol_info(symbol)
         for f in symbol_info['filters']:
