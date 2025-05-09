@@ -40,3 +40,8 @@ try:
     from .oandabroker import OandaBroker
 except ImportError as e:
     pass  # The user may not have something installed
+
+try:
+    from .binancebroker import BinanceBroker
+except ImportError as e:
+    pass  # The user may not have something installed
