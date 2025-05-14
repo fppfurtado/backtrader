@@ -22,14 +22,14 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import collections
-from copy import copy
 import datetime
 import itertools
-
-from .utils.py3 import range, with_metaclass, iteritems
+from copy import copy
+from decimal import Decimal
 
 from .metabase import MetaParams
 from .utils import AutoOrderedDict
+from .utils.py3 import range, with_metaclass, iteritems
 
 
 class OrderExecutionBit(object):
@@ -60,29 +60,29 @@ class OrderExecutionBit(object):
     '''
 
     def __init__(self,
-                 dt=None, size=0, price=0.0,
-                 closed=0, closedvalue=0.0, closedcomm=0.0,
-                 opened=0, openedvalue=0.0, openedcomm=0.0,
-                 pnl=0.0,
-                 psize=0, pprice=0.0):
-
+                 dt=None, size=Decimal('0'), price=Decimal('0.0'),
+                 closed=Decimal('0'), closedvalue=Decimal('0.0'), closedcomm=Decimal('0.0'),
+                 opened=Decimal('0'), openedvalue=Decimal('0.0'), openedcomm=Decimal('0.0'),
+                 pnl=Decimal('0.0'),
+                 psize=Decimal('0'), pprice=Decimal('0.0')):
         self.dt = dt
+
         self.size = size
-        self.price = price
+        self.price = Decimal(str(price)) if not isinstance(price, Decimal) else price
 
         self.closed = closed
         self.opened = opened
-        self.closedvalue = closedvalue
-        self.openedvalue = openedvalue
-        self.closedcomm = closedcomm
-        self.openedcomm = openedcomm
+        self.closedvalue = Decimal(str(closedvalue)) if not isinstance(closedvalue, Decimal) else closedvalue
+        self.openedvalue = Decimal(str(openedvalue)) if not isinstance(openedvalue, Decimal) else openedvalue
+        self.closedcomm = Decimal(str(closedcomm)) if not isinstance(closedcomm, Decimal) else closedcomm
+        self.openedcomm = Decimal(str(openedcomm)) if not isinstance(openedcomm, Decimal) else openedcomm
 
-        self.value = closedvalue + openedvalue
-        self.comm = closedcomm + openedcomm
-        self.pnl = pnl
+        self.value = self.closedvalue + self.openedvalue
+        self.comm = self.closedcomm + self.openedcomm
+        self.pnl = Decimal(str(pnl)) if not isinstance(pnl, Decimal) else pnl
 
         self.psize = psize
-        self.pprice = pprice
+        self.pprice = Decimal(str(pprice)) if not isinstance(pprice, Decimal) else pprice
 
 
 class OrderData(object):
@@ -127,20 +127,21 @@ class OrderData(object):
     # the len of the exbits can be queried with no concerns about another
     # thread making an append and with no need for a lock
 
-    def __init__(self, dt=None, size=0, price=0.0, pricelimit=0.0, remsize=0,
-                 pclose=0.0, trailamount=0.0, trailpercent=0.0):
+    def __init__(self, dt=None, size=Decimal('0'), price=Decimal('0.0'), pricelimit=Decimal('0.0'),
+                 remsize=Decimal('0'), pclose=Decimal('0.0'), trailamount=Decimal('0.0'),
+                 trailpercent=Decimal('0.0')):
 
-        self.pclose = pclose
+        self.pclose = Decimal(str(pclose)) if not isinstance(pclose, Decimal) else pclose
         self.exbits = collections.deque()  # for historical purposes
         self.p1, self.p2 = 0, 0  # indices to pending notifications
 
         self.dt = dt
         self.size = size
         self.remsize = remsize
-        self.price = price
-        self.pricelimit = pricelimit
-        self.trailamount = trailamount
-        self.trailpercent = trailpercent
+        self.price = Decimal(str(price)) if not isinstance(price, Decimal) else price
+        self.pricelimit = Decimal(str(pricelimit)) if pricelimit is not None else pricelimit
+        self.trailamount = Decimal(str(trailamount)) if trailamount is not None else trailamount
+        self.trailpercent = Decimal(str(trailpercent)) if trailpercent is not None else trailpercent
 
         if not pricelimit:
             # if no pricelimit is given, use the given price
@@ -152,13 +153,13 @@ class OrderData(object):
 
         self.plimit = pricelimit
 
-        self.value = 0.0
-        self.comm = 0.0
+        self.value = Decimal('0.0')
+        self.comm = Decimal('0.0')
         self.margin = None
-        self.pnl = 0.0
+        self.pnl = Decimal('0.0')
 
-        self.psize = 0
-        self.pprice = 0
+        self.psize =Decimal('0')
+        self.pprice = Decimal('0.0')
 
     def _getplimit(self):
         return self._plimit
@@ -175,10 +176,10 @@ class OrderData(object):
         return self.exbits[key]
 
     def add(self, dt, size, price,
-            closed=0, closedvalue=0.0, closedcomm=0.0,
-            opened=0, openedvalue=0.0, openedcomm=0.0,
-            pnl=0.0,
-            psize=0, pprice=0.0):
+            closed=Decimal('0'), closedvalue=Decimal('0.0'), closedcomm=Decimal('0.0'),
+            opened=Decimal('0'), openedvalue=Decimal('0.0'), openedcomm=Decimal('0.0'),
+            pnl=Decimal('0.0'),
+            psize=Decimal('0'), pprice=Decimal('0.0')):
 
         self.addbit(
             OrderExecutionBit(dt, size, price,
@@ -319,7 +320,7 @@ class OrderBase(with_metaclass(MetaParams, object)):
 
         # Set a reference price if price is not set using
         # the close price
-        pclose = self.data.close[0] if not self.p.simulated else self.price
+        pclose = Decimal(str(self.data.close[0])) if not self.p.simulated else self.price
         price = pclose if not self.price and not self.pricelimit else self.price
 
         dcreated = self.data.datetime[0] if not self.p.simulated else 0.0
@@ -335,13 +336,13 @@ class OrderBase(with_metaclass(MetaParams, object)):
         if self.exectype in [Order.StopTrail, Order.StopTrailLimit]:
             self._limitoffset = self.created.price - self.created.pricelimit
             price = self.created.price
-            self.created.price = float('inf' * self.isbuy() or '-inf')
+            self.created.price = Decimal('Infinity') if self.isbuy() else Decimal('-Infinity')
             self.trailadjust(price)
         else:
-            self._limitoffset = 0.0
+            self._limitoffset = Decimal('0.0')
 
         self.executed = OrderData(remsize=self.size)
-        self.position = 0
+        self.position =Decimal('0')
 
         if isinstance(self.valid, datetime.date):
             # comparison will later be done against the raw datetime[0] value
@@ -377,9 +378,9 @@ class OrderBase(with_metaclass(MetaParams, object)):
                 # eos before current time ... no ... must be at least next day
                 dteos += datetime.timedelta(days=1)
 
-            self.dteos = self.data.date2num(dteos)
+            self.dteos = Decimal(str(self.data.date2num(dteos)))
         else:
-            self.dteos = 0.0
+            self.dteos = Decimal('0.0')
 
     def clone(self):
         # status, triggered and executed are the only moving parts in order
@@ -598,7 +599,7 @@ class Order(OrderBase):
         elif self.trailpercent:
             pamount = price * self.trailpercent
         else:
-            pamount = 0.0
+            pamount = Decimal('0.0')
 
         # Stop sell is below (-), stop buy is above, move only if needed
         if self.isbuy():
