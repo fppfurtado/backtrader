@@ -39,5 +39,10 @@ try:
 except ImportError:
     pass  # The user may not have a module installed
 
+try:
+    from .binancestore import BinanceStore
+except ImportError as e:
+    print(e)  # The user may not have a module installed
+
 
 from .vchartfile import VChartFile
