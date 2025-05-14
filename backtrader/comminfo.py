@@ -21,10 +21,10 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import datetime
+from decimal import Decimal
 
-from .utils.py3 import with_metaclass
 from .metabase import MetaParams
+from .utils.py3 import with_metaclass
 
 
 class CommInfoBase(with_metaclass(MetaParams)):
@@ -120,13 +120,15 @@ class CommInfoBase(with_metaclass(MetaParams)):
     COMM_PERC, COMM_FIXED = range(2)
 
     params = (
-        ('commission', 0.0), ('mult', 1.0), ('margin', None),
+        ('commission', Decimal('0.0')),
+        ('mult', Decimal('1.0')),
+        ('margin', None),
         ('commtype', None),
         ('stocklike', False),
         ('percabs', False),
-        ('interest', 0.0),
+        ('interest', Decimal('0.0')),
         ('interest_long', False),
-        ('leverage', 1.0),
+        ('leverage', Decimal('1.0')),
         ('automargin', False),
     )
 
@@ -151,12 +153,12 @@ class CommInfoBase(with_metaclass(MetaParams)):
                 self._commtype = self.COMM_PERC
 
         if not self._stocklike and not self.p.margin:
-            self.p.margin = 1.0  # avoid having None/0
+            self.p.margin = Decimal('1.0') # avoid having None/0
 
         if self._commtype == self.COMM_PERC and not self.p.percabs:
-            self.p.commission /= 100.0
+            self.p.commission /= Decimal('100.0')
 
-        self._creditrate = self.p.interest / 365.0
+        self._creditrate = self.p.interest / Decimal('365.0')
 
     @property
     def margin(self):
@@ -177,12 +179,12 @@ class CommInfoBase(with_metaclass(MetaParams)):
           - Use param ``automargin`` * ``price`` if ``automargin > 0``
         '''
         if not self.p.automargin:
-            return self.p.margin
+            return Decimal(str(self.p.margin)) if self.p.margin else self.p.margin
 
         elif self.p.automargin < 0:
-            return price * self.p.mult
+            return Decimal(str(price)) * self.p.mult
 
-        return price * self.p.automargin  # int/float expected
+        return Decimal(str(price)) * Decimal(str(self.p.automargin)) # int/float expected
 
     def get_leverage(self):
 
@@ -192,24 +194,24 @@ class CommInfoBase(with_metaclass(MetaParams)):
     def getsize(self, price, cash):
         '''Returns the needed size to meet a cash operation at a given price'''
         if not self._stocklike:
-            return int(self.p.leverage * (cash // self.get_margin(price)))
+            return int(self.p.leverage * (Decimal(str(cash)) // self.get_margin(price)))
 
-        return int(self.p.leverage * (cash // price))
+        return int(self.p.leverage * (Decimal(str(cash)) // Decimal(str(price))))
 
     def getoperationcost(self, size, price):
         '''Returns the needed amount of cash an operation would cost'''
         if not self._stocklike:
-            return abs(size) * self.get_margin(price)
+            return Decimal(str(abs(size))) * self.get_margin(price)
 
-        return abs(size) * price
+        return abs(size) * Decimal(str(price))
 
     def getvaluesize(self, size, price):
         '''Returns the value of size for given a price. For future-like
         objects it is fixed at size * margin'''
         if not self._stocklike:
-            return abs(size) * self.get_margin(price)
+            return Decimal(str(abs(size))) * self.get_margin(price)
 
-        return size * price
+        return size * Decimal(str(price))
 
     def getvalue(self, position, price):
         '''Returns the value of a position given a price. For future-like
@@ -219,11 +221,11 @@ class CommInfoBase(with_metaclass(MetaParams)):
 
         size = position.size
         if size >= 0:
-            return size * price
+            return size * Decimal(str(price))
 
         # With stocks, a short position is worth more as the price goes down
-        value = position.price * size  # original value
-        value += (position.price - price) * size  # increased value
+        value = Decimal(str(position.price)) * size # original value
+        value += (Decimal(str(position.price)) - Decimal(str(price))) * size # increased value
         return value
 
     def _getcommission(self, size, price, pseudoexec):
@@ -232,41 +234,41 @@ class CommInfoBase(with_metaclass(MetaParams)):
         pseudoexec: if True the operation has not yet been executed
         '''
         if self._commtype == self.COMM_PERC:
-            return abs(size) * self.p.commission * price
+            return Decimal(str(abs(size))) * self.p.commission * Decimal(str(price))
 
-        return abs(size) * self.p.commission
+        return Decimal(str(abs(size))) * self.p.commission
 
     def getcommission(self, size, price):
         '''Calculates the commission of an operation at a given price
         '''
-        return self._getcommission(size, price, pseudoexec=True)
+        return self._getcommission(Decimal(str(size)), Decimal(str(price)), pseudoexec=True)
 
     def confirmexec(self, size, price):
         return self._getcommission(size, price, pseudoexec=False)
 
     def profitandloss(self, size, price, newprice):
         '''Return actual profit and loss a position has'''
-        return size * (newprice - price) * self.p.mult
+        return Decimal(str(size)) * (Decimal(str(newprice)) - Decimal(str(price))) * self.p.mult
 
     def cashadjust(self, size, price, newprice):
         '''Calculates cash adjustment for a given price difference'''
         if not self._stocklike:
-            return size * (newprice - price) * self.p.mult
+            return Decimal(str(size)) * (Decimal(str(newprice)) - Decimal(str(price))) * self.p.mult
 
-        return 0.0
+        return Decimal('0.0')
 
     def get_credit_interest(self, data, pos, dt):
         '''Calculates the credit due for short selling or product specific'''
         size, price = pos.size, pos.price
 
         if size > 0 and not self.p.interest_long:
-            return 0.0  # long positions not charged
+            return Decimal('0.0') # long positions not charged
 
         dt0 = dt.date()
         dt1 = pos.datetime.date()
 
         if dt0 <= dt1:
-            return 0.0
+            return Decimal('0.0')
 
         return self._get_credit_interest(data, size, price,
                                          (dt0 - dt1).days, dt0, dt1)
@@ -302,7 +304,7 @@ class CommInfoBase(with_metaclass(MetaParams)):
         ``dt0`` and ``dt1`` are not used in the default implementation and are
         provided as extra input for overridden methods
         '''
-        return days * self._creditrate * abs(size) * price
+        return Decimal(str(days)) * self._creditrate * Decimal(str(abs(size))) * Decimal(str(price))
 
 
 class CommissionInfo(CommInfoBase):
@@ -324,5 +326,5 @@ class CommissionInfo(CommInfoBase):
 
     '''
     params = (
-        ('percabs', True),  # Original CommissionInfo took 0.xx for percentages
+        ('percabs', True), # Original CommissionInfo took 0.xx for percentages
     )
