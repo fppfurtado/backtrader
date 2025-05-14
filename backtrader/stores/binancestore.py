@@ -1,13 +1,13 @@
 import time
-
 from functools import wraps
 from math import floor
 
-from backtrader.dataseries import TimeFrame
 from binance import Client, ThreadedWebsocketManager
 from binance.enums import *
 from binance.exceptions import BinanceAPIException
 from requests.exceptions import ConnectTimeout, ConnectionError
+
+from backtrader.dataseries import TimeFrame
 
 
 class BinanceStore(object):
@@ -44,10 +44,7 @@ class BinanceStore(object):
         self._value = 0
         self.get_balance()
 
-        self._step_size = {}
-        self._min_order = {}
-        self._min_order_in_target = {}
-        self._tick_size = {}
+        self._asset_filters = {}
 
         self._broker = None
         self._data = None
@@ -123,10 +120,10 @@ class BinanceStore(object):
             **params)
 
     def format_price(self, symbol, price):
-        return self._format_value(price, self._tick_size[symbol])
+        return self._format_value(price, self._asset_filters[symbol]['tickSize'])
     
     def format_quantity(self, symbol, size):
-        return self._format_value(size, self._step_size[symbol])
+        return self._format_value(size, self._asset_filters[symbol]['stepSize'])
 
     @retry
     def get_asset_balance(self, asset):
@@ -151,15 +148,30 @@ class BinanceStore(object):
         self._value = free + locked
 
     def get_filters(self, symbol):
+        if not self._asset_filters:
+            self._asset_filters[symbol] = self._get_filters(symbol)
+
+        return self._asset_filters[symbol]
+
+    def _get_filters(self, symbol):
         symbol_info = self.get_symbol_info(symbol)
+        filters = dict()
         for f in symbol_info['filters']:
             if f['filterType'] == 'LOT_SIZE':
-                self._step_size[symbol] = f['stepSize']
-                self._min_order[symbol] = f['minQty']
+                filters.update({
+                    'stepSize': f['stepSize'],
+                    'minQty': f['minQty']
+                })
             elif f['filterType'] == 'PRICE_FILTER':
-                self._tick_size[symbol] = f['tickSize']
+                filters.update({
+                    'tickSize': f['tickSize']
+                })
             elif f['filterType'] == 'NOTIONAL':
-                self._min_order_in_target[symbol] = f['minNotional']
+                filters.update({
+                    'minNotional': f['minNotional']
+                })
+
+        return filters
 
     def get_interval(self, timeframe, compression):
         return self._GRANULARITIES.get((timeframe, compression))
