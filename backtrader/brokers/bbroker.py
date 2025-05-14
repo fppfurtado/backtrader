@@ -23,9 +23,9 @@ from __future__ import (absolute_import, division, print_function,
 
 import collections
 import datetime
+from decimal import Decimal
 
 import backtrader as bt
-from backtrader.comminfo import CommInfoBase
 from backtrader.order import Order, BuyOrder, SellOrder
 from backtrader.position import Position
 from backtrader.utils.py3 import string_types, integer_types
@@ -222,13 +222,13 @@ class BackBroker(bt.BrokerBase):
 
     '''
     params = (
-        ('cash', 10000.0),
+        ('cash', Decimal('10000.0')),
         ('checksubmit', True),
         ('eosbar', False),
         ('filler', None),
         # slippage options
-        ('slip_perc', 0.0),
-        ('slip_fixed', 0.0),
+        ('slip_perc', Decimal('0.0')),
+        ('slip_fixed', Decimal('0.0')),
         ('slip_open', False),
         ('slip_match', True),
         ('slip_limit', True),
@@ -237,7 +237,7 @@ class BackBroker(bt.BrokerBase):
         ('coo', False),
         ('int2pnl', True),
         ('shortcash', True),
-        ('fundstartval', 100.0),
+        ('fundstartval', Decimal('100.0')),
         ('fundmode', False),
     )
 
@@ -246,26 +246,26 @@ class BackBroker(bt.BrokerBase):
         self._userhist = []
         self._fundhist = []
         # share_value, net asset value
-        self._fhistlast = [float('NaN'), float('NaN')]
+        self._fhistlast = [Decimal('NaN'), Decimal('NaN')]
 
     def init(self):
         super(BackBroker, self).init()
-        self.startingcash = self.cash = self.p.cash
+        self.startingcash = self.cash = Decimal(str(self.p.cash))
         self._value = self.cash
-        self._valuemkt = 0.0  # no open position
+        self._valuemkt = Decimal('0.0')  # no open position
 
-        self._valuelever = 0.0  # no open position
-        self._valuemktlever = 0.0  # no open position
+        self._valuelever = Decimal('0.0')  # no open position
+        self._valuemktlever = Decimal('0.0')  # no open position
 
-        self._leverage = 1.0  # initially nothing is open
-        self._unrealized = 0.0  # no open position
+        self._leverage = Decimal('1.0')  # initially nothing is open
+        self._unrealized = Decimal('0.0')  # no open position
 
         self.orders = list()  # will only be appending
         self.pending = collections.deque()  # popleft and append(right)
         self._toactivate = collections.deque()  # to activate in next cycle
 
         self.positions = collections.defaultdict(Position)
-        self.d_credit = collections.defaultdict(float)  # credit per data
+        self.d_credit = collections.defaultdict(Decimal)  # credit per data
         self.notifs = collections.deque()
 
         self.submitted = collections.deque()
@@ -276,7 +276,7 @@ class BackBroker(bt.BrokerBase):
         self._ocos = dict()
         self._ocol = collections.defaultdict(list)
 
-        self._fundval = self.p.fundstartval
+        self._fundval = Decimal(str(self.p.fundstartval))
         self._fundshares = self.p.cash / self._fundval
         self._cash_addition = collections.deque()
 
@@ -305,7 +305,7 @@ class BackBroker(bt.BrokerBase):
 
     def set_fundstartval(self, fundstartval):
         '''Set the starting value of the fund-like performance tracker'''
-        self.p.fundstartval = fundstartval
+        self.p.fundstartval = Decimal(str(fundstartval))
 
     def set_int2pnl(self, int2pnl):
         '''Configure assignment of interest to profit and loss'''
@@ -327,8 +327,8 @@ class BackBroker(bt.BrokerBase):
                           slip_open=True, slip_limit=True,
                           slip_match=True, slip_out=False):
         '''Configure slippage to be percentage based'''
-        self.p.slip_perc = perc
-        self.p.slip_fixed = 0.0
+        self.p.slip_perc = Decimal(str(perc))
+        self.p.slip_fixed = Decimal('0.0')
         self.p.slip_open = slip_open
         self.p.slip_limit = slip_limit
         self.p.slip_match = slip_match
@@ -338,8 +338,8 @@ class BackBroker(bt.BrokerBase):
                            slip_open=True, slip_limit=True,
                            slip_match=True, slip_out=False):
         '''Configure slippage to be fixed points based'''
-        self.p.slip_perc = 0.0
-        self.p.slip_fixed = fixed
+        self.p.slip_perc = Decimal('0.0')
+        self.p.slip_fixed = Decimal(str(fixed))
         self.p.slip_open = slip_open
         self.p.slip_limit = slip_limit
         self.p.slip_match = slip_match
@@ -361,20 +361,20 @@ class BackBroker(bt.BrokerBase):
 
     def get_cash(self):
         '''Returns the current cash (alias: ``getcash``)'''
-        return self.cash
+        return Decimal(str(self.cash))
 
     getcash = get_cash
 
     def set_cash(self, cash):
         '''Sets the cash parameter (alias: ``setcash``)'''
-        self.startingcash = self.cash = self.p.cash = cash
-        self._value = cash
+        self.startingcash = self.cash = self.p.cash = Decimal(str(cash))
+        self._value = Decimal(str(cash))
 
     setcash = set_cash
 
     def add_cash(self, cash):
         '''Add/Remove cash to the system (use a negative value to remove)'''
-        self._cash_addition.append(cash)
+        self._cash_addition.append(Decimal(str(cash)))
 
     def get_fundshares(self):
         '''Returns the current number of shares in the fund-like mode'''
@@ -420,9 +420,9 @@ class BackBroker(bt.BrokerBase):
         return self.get_value(datas=datas, mkt=mkt)
 
     def _get_value(self, datas=None, lever=False):
-        pos_value = 0.0
-        pos_value_unlever = 0.0
-        unrealized = 0.0
+        pos_value = Decimal('0.0')
+        pos_value_unlever = Decimal('0.0')
+        unrealized = Decimal('0.0')
 
         while self._cash_addition:
             c = self._cash_addition.popleft()
@@ -470,7 +470,7 @@ class BackBroker(bt.BrokerBase):
             self.cash = fvalue - pos_value_unlever
             self._fundval = fval
             self._fundshares = fvalue / fval
-            lev = pos_value / (pos_value_unlever or 1.0)
+            lev = pos_value / (pos_value_unlever or Decimal('1.0'))
 
             # update the calculated values above to the historical values
             pos_value_unlever = fvalue
@@ -481,7 +481,7 @@ class BackBroker(bt.BrokerBase):
         self._valuelever = self.cash + pos_value
         self._valuemktlever = pos_value
 
-        self._leverage = pos_value / (pos_value_unlever or 1.0)
+        self._leverage = pos_value / (pos_value_unlever or Decimal('1.0'))
         self._unrealized = unrealized
 
         return self._value if not lever else self._valuelever
@@ -642,7 +642,7 @@ class BackBroker(bt.BrokerBase):
         self._fundhist = [f, fiter]
         # self._fhistlast = f[1:]
 
-        self.set_cash(float(f[2]))
+        self.set_cash(Decimal(str(f[2])))
 
     def buy(self, owner, data,
             size, price=None, plimit=None,
@@ -653,9 +653,11 @@ class BackBroker(bt.BrokerBase):
             **kwargs):
 
         order = BuyOrder(owner=owner, data=data,
-                         size=size, price=price, pricelimit=plimit,
+                         size=size, price=Decimal(str(price)) if price else None,
+                         pricelimit=Decimal(str(plimit)) if plimit else None,
                          exectype=exectype, valid=valid, tradeid=tradeid,
-                         trailamount=trailamount, trailpercent=trailpercent,
+                         trailamount=Decimal(str(trailamount)) if trailamount else None,
+                         trailpercent=Decimal(str(trailpercent)) if trailpercent else None,
                          parent=parent, transmit=transmit,
                          histnotify=histnotify)
 
@@ -673,9 +675,11 @@ class BackBroker(bt.BrokerBase):
              **kwargs):
 
         order = SellOrder(owner=owner, data=data,
-                          size=size, price=price, pricelimit=plimit,
+                          size=size, price=Decimal(str(price)) if price else None,
+                          pricelimit=Decimal(str(plimit)) if plimit else None,
                           exectype=exectype, valid=valid, tradeid=tradeid,
-                          trailamount=trailamount, trailpercent=trailpercent,
+                          trailamount=Decimal(str(trailamount)) if trailamount else None,
+                          trailpercent=Decimal(str(trailpercent)) if trailpercent else None,
                           parent=parent, transmit=transmit,
                           histnotify=histnotify)
 
@@ -723,17 +727,17 @@ class BackBroker(bt.BrokerBase):
             pnl = comminfo.profitandloss(-closed, pprice_orig, price)
             cash = self.cash
         else:
-            pnl = 0
+            pnl = Decimal('0.0')
             if not self.p.coo:
-                price = pprice_orig = order.created.price
+                price = pprice_orig = Decimal(str(order.created.price))
             else:
                 # When doing cheat on open, the price to be considered for a
                 # market order is the opening price and not the default closing
                 # price with which the order was created
                 if order.exectype == Order.Market:
-                    price = pprice_orig = order.data.open[0]
+                    price = pprice_orig = Decimal(str(order.data.open[0]))
                 else:
-                    price = pprice_orig = order.created.price
+                    price = pprice_orig = Decimal(str(order.created.price))
 
             psize, pprice, opened, closed = position.update(size, price)
 
@@ -764,7 +768,7 @@ class BackBroker(bt.BrokerBase):
                 # Update system cash
                 self.cash = cash
         else:
-            closedvalue = closedcomm = 0.0
+            closedvalue = closedcomm = Decimal('0.0')
 
         popened = opened
         if opened:
@@ -773,19 +777,19 @@ class BackBroker(bt.BrokerBase):
             else:
                 openedvalue = comminfo.getoperationcost(opened, price)
 
-            opencash = openedvalue
-            if openedvalue > 0:  # long position being opened
-                opencash /= comminfo.get_leverage()  # dec cash with level
+            opencash = openedvalue if openedvalue <= cash else cash
+            if openedvalue > Decimal('0.0'):  # long position being opened
+                opencash /= Decimal(str(comminfo.get_leverage()))  # dec cash with level
 
             cash -= opencash  # original behavior
 
             openedcomm = cinfocomp.getcommission(opened, price)
             cash -= openedcomm
 
-            if cash < 0.0:
+            if cash < Decimal('0.0'):
                 # execution is not possible - nullify
                 opened = 0
-                openedvalue = openedcomm = 0.0
+                openedvalue = openedcomm = Decimal('0.0')
 
             elif ago is not None:  # real execution
                 if abs(psize) > abs(opened):
@@ -806,7 +810,7 @@ class BackBroker(bt.BrokerBase):
                 # update system cash - checking if opened is still != 0
                 self.cash = cash
         else:
-            openedvalue = openedcomm = 0.0
+            openedvalue = openedcomm = Decimal('0.0')
 
         if ago is None:
             # return cash from pseudo-execution
@@ -822,7 +826,7 @@ class BackBroker(bt.BrokerBase):
             position.update(execsize, price, data.datetime.datetime())
 
             if closed and self.p.int2pnl:  # Assign accumulated interest data
-                closedcomm += self.d_credit.pop(data, 0.0)
+                closedcomm += self.d_credit.pop(data, Decimal('0.0'))
 
             # Execute and notify the order
             order.execute(dtcoc or data.datetime[ago],
@@ -848,24 +852,24 @@ class BackBroker(bt.BrokerBase):
         self.notifs.append(order.clone())
 
     def _try_exec_historical(self, order):
-        self._execute(order, ago=0, price=order.created.price)
+        self._execute(order, ago=0, price=Decimal(str(order.created.price)))
 
     def _try_exec_market(self, order, popen, phigh, plow):
         ago = 0
         if self.p.coc and order.info.get('coc', True):
             dtcoc = order.created.dt
-            exprice = order.created.pclose
+            exprice = Decimal(str(order.created.pclose))
         else:
             if not self.p.coo and order.data.datetime[0] <= order.created.dt:
                 return    # can only execute after creation time
 
             dtcoc = None
-            exprice = popen
+            exprice = Decimal(str(popen))
 
         if order.isbuy():
-            p = self._slip_up(phigh, exprice, doslip=self.p.slip_open)
+            p = self._slip_up(Decimal(str(phigh)), exprice, doslip=self.p.slip_open)
         else:
-            p = self._slip_down(plow, exprice, doslip=self.p.slip_open)
+            p = self._slip_down(Decimal(str(plow)), exprice, doslip=self.p.slip_open)
 
         self._execute(order, ago=0, price=p, dtcoc=dtcoc)
 
@@ -884,64 +888,64 @@ class BackBroker(bt.BrokerBase):
                 # past the end of session or right at it and eosbar is True
                 if order.pannotated and dt0 > order.dteos:
                     ago = -1
-                    execprice = order.pannotated
+                    execprice = Decimal(str(order.pannotated))
                 else:
                     ago = 0
-                    execprice = pclose
+                    execprice = Decimal(str(pclose))
 
                 self._execute(order, ago=ago, price=execprice)
                 return
 
         # If no exexcution has taken place ... annotate the closing price
-        order.pannotated = pclose
+        order.pannotated = Decimal(str(pclose))
 
     def _try_exec_limit(self, order, popen, phigh, plow, plimit):
         if order.isbuy():
             if plimit >= popen:
                 # open smaller/equal than requested - buy cheaper
-                pmax = min(phigh, plimit)
-                p = self._slip_up(pmax, popen, doslip=self.p.slip_open,
+                pmax = Decimal(str(min(phigh, plimit)))
+                p = self._slip_up(pmax, Decimal(str(popen)), doslip=self.p.slip_open,
                                   lim=True)
                 self._execute(order, ago=0, price=p)
             elif plimit >= plow:
                 # day low below req price ... match limit price
-                self._execute(order, ago=0, price=plimit)
+                self._execute(order, ago=0, price=Decimal(str(plimit)))
 
         else:  # Sell
             if plimit <= popen:
                 # open greater/equal than requested - sell more expensive
-                pmin = max(plow, plimit)
-                p = self._slip_down(plimit, popen, doslip=self.p.slip_open,
+                pmin = Decimal(str(max(plow, plimit)))
+                p = self._slip_down(Decimal(str(plimit)), Decimal(str(popen)), doslip=self.p.slip_open,
                                     lim=True)
                 self._execute(order, ago=0, price=p)
             elif plimit <= phigh:
                 # day high above req price ... match limit price
-                self._execute(order, ago=0, price=plimit)
+                self._execute(order, ago=0, price=Decimal(str(plimit)))
 
     def _try_exec_stop(self, order, popen, phigh, plow, pcreated, pclose):
         if order.isbuy():
             if popen >= pcreated:
                 # price penetrated with an open gap - use open
-                p = self._slip_up(phigh, popen, doslip=self.p.slip_open)
+                p = self._slip_up(Decimal(str(phigh)), Decimal(str(popen)), doslip=self.p.slip_open)
                 self._execute(order, ago=0, price=p)
             elif phigh >= pcreated:
                 # price penetrated during the session - use trigger price
-                p = self._slip_up(phigh, pcreated)
+                p = self._slip_up(Decimal(str(phigh)), Decimal(str(pcreated)))
                 self._execute(order, ago=0, price=p)
 
         else:  # Sell
             if popen <= pcreated:
                 # price penetrated with an open gap - use open
-                p = self._slip_down(plow, popen, doslip=self.p.slip_open)
+                p = self._slip_down(Decimal(str(plow)), Decimal(str(popen)), doslip=self.p.slip_open)
                 self._execute(order, ago=0, price=p)
             elif plow <= pcreated:
                 # price penetrated during the session - use trigger price
-                p = self._slip_down(plow, pcreated)
+                p = self._slip_down(Decimal(str(plow)), Decimal(str(pcreated)))
                 self._execute(order, ago=0, price=p)
 
         # not (completely) executed and trailing stop
         if order.alive() and order.exectype == Order.StopTrail:
-            order.trailadjust(pclose)
+            order.trailadjust(Decimal(str(pclose)))
 
     def _try_exec_stoplimit(self, order,
                             popen, phigh, plow, pclose,
@@ -957,13 +961,13 @@ class BackBroker(bt.BrokerBase):
                 # can calculate execution for a few cases - datetime is fixed
                 if popen > pclose:
                     if plimit >= pcreated:  # limit above stop trigger
-                        p = self._slip_up(phigh, pcreated, lim=True)
+                        p = self._slip_up(Decimal(str(phigh)), Decimal(str(pcreated)), lim=True)
                         self._execute(order, ago=0, price=p)
                     elif plimit >= pclose:
-                        self._execute(order, ago=0, price=plimit)
+                        self._execute(order, ago=0, price=Decimal(str(plimit)))
                 else:  # popen < pclose
                     if plimit >= pcreated:
-                        p = self._slip_up(phigh, pcreated, lim=True)
+                        p = self._slip_up(Decimal(str(phigh)), Decimal(str(pcreated)), lim=True)
                         self._execute(order, ago=0, price=p)
         else:  # Sell
             if popen <= pcreated:
@@ -977,19 +981,19 @@ class BackBroker(bt.BrokerBase):
                 # can calculate execution for a few cases - datetime is fixed
                 if popen <= pclose:
                     if plimit <= pcreated:
-                        p = self._slip_down(plow, pcreated, lim=True)
+                        p = self._slip_down(Decimal(str(plow)), Decimal(str(pcreated)), lim=True)
                         self._execute(order, ago=0, price=p)
                     elif plimit <= pclose:
-                        self._execute(order, ago=0, price=plimit)
+                        self._execute(order, ago=0, price=Decimal(str(plimit)))
                 else:
                     # popen > pclose
                     if plimit <= pcreated:
-                        p = self._slip_down(plow, pcreated, lim=True)
+                        p = self._slip_down(Decimal(str(plow)), Decimal(str(pcreated)), lim=True)
                         self._execute(order, ago=0, price=p)
 
         # not (completely) executed and trailing stop
         if order.alive() and order.exectype == Order.StopTrailLimit:
-            order.trailadjust(pclose)
+            order.trailadjust(Decimal(str(pclose)))
 
     def _slip_up(self, pmax, price, doslip=True, lim=False):
         if not doslip:
@@ -998,7 +1002,7 @@ class BackBroker(bt.BrokerBase):
         slip_perc = self.p.slip_perc
         slip_fixed = self.p.slip_fixed
         if slip_perc:
-            pslip = price * (1 + slip_perc)
+            pslip = price * (Decimal('1.0') + slip_perc)
         elif slip_fixed:
             pslip = price + slip_fixed
         else:
@@ -1021,7 +1025,7 @@ class BackBroker(bt.BrokerBase):
         slip_perc = self.p.slip_perc
         slip_fixed = self.p.slip_fixed
         if slip_perc:
-            pslip = price * (1 - slip_perc)
+            pslip = price * (Decimal('1.0') - slip_perc)
         elif slip_fixed:
             pslip = price - slip_fixed
         else:
@@ -1042,19 +1046,19 @@ class BackBroker(bt.BrokerBase):
 
         popen = getattr(data, 'tick_open', None)
         if popen is None:
-            popen = data.open[0]
+            popen = Decimal(str(data.open[0]))
         phigh = getattr(data, 'tick_high', None)
         if phigh is None:
-            phigh = data.high[0]
+            phigh = Decimal(str(data.high[0]))
         plow = getattr(data, 'tick_low', None)
         if plow is None:
-            plow = data.low[0]
+            plow = Decimal(str(data.low[0]))
         pclose = getattr(data, 'tick_close', None)
         if pclose is None:
-            pclose = data.close[0]
+            pclose = Decimal(str(data.close[0]))
 
-        pcreated = order.created.price
-        plimit = order.created.pricelimit
+        pcreated = Decimal(str(order.created.price))
+        plimit = Decimal(str(order.created.pricelimit)) if order.created.pricelimit else None
 
         if order.exectype == Order.Market:
             self._try_exec_market(order, popen, phigh, plow)
@@ -1108,7 +1112,7 @@ class BackBroker(bt.BrokerBase):
         # st0 = self.cerebro.runningstrats[0]
         # if dt <= st0.datetime.datetime():
         if dt <= self.cerebro._dtmaster:
-            self._fhistlast = f[1:]
+            self._fhistlast = [Decimal(str(x)) for x in f[1:]]
             fhist[0] = list(next(funds, []))
 
         return self._fhistlast
@@ -1153,8 +1157,8 @@ class BackBroker(bt.BrokerBase):
                 if dt > d.datetime.datetime():
                     break  # cannot execute yet 1st in queue, stop processing
 
-                size = uhorder[1]
-                price = uhorder[2]
+                size = Decimal(str(uhorder[1]))
+                price = Decimal(str(uhorder[2]))
                 owner = self.cerebro.runningstrats[0]
                 if size > 0:
                     o = self.buy(owner=owner, data=d,
@@ -1181,7 +1185,7 @@ class BackBroker(bt.BrokerBase):
             self.check_submitted()
 
         # Discount any cash for positions hold
-        credit = 0.0
+        credit = Decimal('0.0')
         for data, pos in self.positions.items():
             if pos:
                 comminfo = self.getcommissioninfo(data)
@@ -1228,7 +1232,7 @@ class BackBroker(bt.BrokerBase):
                                                  pos.adjbase,
                                                  data.close[0])
                 # record the last adjustment price
-                pos.adjbase = data.close[0]
+                pos.adjbase = Decimal(str(data.close[0]))
 
         self._get_value()  # update value
 
