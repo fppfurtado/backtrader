@@ -753,10 +753,11 @@ class BackBroker(bt.BrokerBase):
             if closedvalue > 0:  # long position closed
                 closecash /= comminfo.get_leverage()  # inc cash with lever
 
-            cash += closecash + pnl * comminfo.stocklike
-            # Calculate and substract commission
-            closedcomm = comminfo.getcommission(closed, price)
-            cash -= closedcomm
+                # Calculate and substract commission
+                closedcomm = comminfo.getcommission(closed, price)
+                pnl -= closedcomm
+
+                cash += closecash + pnl * comminfo.stocklike
 
             if ago is not None:
                 # Cashadjust closed contracts: prev close vs exec price
