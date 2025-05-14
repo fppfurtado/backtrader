@@ -22,6 +22,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import itertools
+from decimal import Decimal
 
 from .utils import AutoOrderedDict
 from .utils.date import num2date
@@ -41,18 +42,18 @@ class TradeHistory(AutoOrderedDict):
         - ``dt`` (``float``): float coded datetime
         - ``barlen`` (``int``): number of bars the trade has been active
         - ``size`` (``int``): current size of the Trade
-        - ``price`` (``float``): current price of the Trade
-        - ``value`` (``float``): current monetary value of the Trade
-        - ``pnl`` (``float``): current profit and loss of the Trade
-        - ``pnlcomm`` (``float``): current profit and loss minus commission
+        - ``price`` (``Decimal``): current price of the Trade
+        - ``value`` (``Decimal``): current monetary value of the Trade
+        - ``pnl`` (``Decimal``): current profit and loss of the Trade
+        - ``pnlcomm`` (``Decimal``): current profit and loss minus commission
 
       - ``event`` (``dict`` with '.' notation): Holds the event update
         - parameters
 
         - ``order`` (``object``): the order which initiated the``update``
         - ``size`` (``int``): size of the update
-        - ``price`` (``float``):price of the update
-        - ``commission`` (``float``): price of the update
+        - ``price`` (``Decimal``):price of the update
+        - ``commission`` (``Decimal``): price of the update
     '''
 
     def __init__(self,
@@ -63,10 +64,10 @@ class TradeHistory(AutoOrderedDict):
         self.status.dt = dt
         self.status.barlen = barlen
         self.status.size = size
-        self.status.price = price
-        self.status.value = value
-        self.status.pnl = pnl
-        self.status.pnlcomm = pnlcomm
+        self.status.price = Decimal(str(price)) if price else Decimal('0.0')
+        self.status.value = Decimal(str(value)) if value else Decimal('0.0')
+        self.status.pnl = Decimal(str(pnl)) if pnl else Decimal('0.0')
+        self.status.pnlcomm = Decimal(str(pnlcomm)) if pnlcomm else Decimal('0.0')
         self.status.tz = tz
         if event is not None:
             self.event = event
@@ -80,8 +81,8 @@ class TradeHistory(AutoOrderedDict):
         '''Used to fill the ``update`` part of the history entry'''
         self.event.order = order
         self.event.size = size
-        self.event.price = price
-        self.event.commission = commission
+        self.event.price = Decimal(str(price)) if price else Decimal('0.0')
+        self.event.commission = Decimal(str(commission)) if commission else Decimal('0.0')
 
         # Do not allow updates (avoids typing errors)
         self._close()
@@ -109,11 +110,11 @@ class Trade(object):
       - ``tradeid``: grouping tradeid passed to orders during creation
         The default in orders is 0
       - ``size`` (``int``): current size of the trade
-      - ``price`` (``float``): current price of the trade
-      - ``value`` (``float``): current value of the trade
-      - ``commission`` (``float``): current accumulated commission
-      - ``pnl`` (``float``): current profit and loss of the trade (gross pnl)
-      - ``pnlcomm`` (``float``): current profit and loss of the trade minus
+      - ``price`` (``Decimal``): current price of the trade
+      - ``value`` (``Decimal``): current value of the trade
+      - ``commission`` (``Decimal``): current accumulated commission
+      - ``pnl`` (``Decimal``): current profit and loss of the trade (gross pnl)
+      - ``pnlcomm`` (``Decimal``): current profit and loss of the trade minus
         commission (net pnl)
       - ``isclosed`` (``bool``): records if the last update closed (set size to
         null the trade
@@ -163,18 +164,18 @@ class Trade(object):
         )
 
     def __init__(self, data=None, tradeid=0, historyon=False,
-                 size=0, price=0.0, value=0.0, commission=0.0):
+                 size=0, price=Decimal('0.0'), value=Decimal('0.0'), commission=Decimal('0.0')):
 
         self.ref = next(self.refbasis)
         self.data = data
         self.tradeid = tradeid
         self.size = size
-        self.price = price
-        self.value = value
-        self.commission = commission
+        self.price = Decimal(str(price)) if price else Decimal('0.0')
+        self.value = Decimal(str(value)) if value else Decimal('0.0')
+        self.commission = Decimal(str(commission)) if commission else Decimal('0.0')
 
-        self.pnl = 0.0
-        self.pnlcomm = 0.0
+        self.pnl = Decimal('0.0')
+        self.pnlcomm = Decimal('0.0')
 
         self.justopened = False
         self.isopen = False
@@ -240,19 +241,19 @@ class Trade(object):
                 if size has the opposite sign as current op size a
                 reduction/close will happen
 
-            price (float): always be positive to ensure consistency
-            value (float): (unused) cost incurred in new size/price op
+            price (Decimal): always be positive to ensure consistency
+            value (Decimal): (unused) cost incurred in new size/price op
                            Not used because the value is calculated for the
                            trade
-            commission (float): incurred commission in the new size/price op
-            pnl (float): (unused) generated by the executed part
+            commission (Decimal): incurred commission in the new size/price op
+            pnl (Decimal): (unused) generated by the executed part
                          Not used because the trade has an independent pnl
         '''
         if not size:
             return  # empty update, skip all other calculations
 
         # Commission can only increase
-        self.commission += commission
+        self.commission += Decimal(str(commission)) if commission else Decimal('0.0')
 
         # Update size and keep a reference for logic an calculations
         oldsize = self.size
@@ -285,20 +286,21 @@ class Trade(object):
         elif self.isopen:
             self.status = self.Open
 
+        price_dec = Decimal(str(price)) if price else Decimal('0.0')
         if abs(self.size) > abs(oldsize):
             # position increased (be it positive or negative)
             # update the average price
-            self.price = (oldsize * self.price + size * price) / self.size
-            pnl = 0.0
+            self.price = (Decimal(str(oldsize)) * self.price + Decimal(str(size)) * price_dec) / Decimal(str(self.size))
+            pnl = Decimal('0.0')
 
         else:  # abs(self.size) < abs(oldsize)
             # position reduced/closed
-            pnl = comminfo.profitandloss(-size, self.price, price)
+            pnl = Decimal(str(comminfo.profitandloss(-size, float(self.price), float(price_dec))))
 
-        self.pnl += pnl
+        self.pnl += Decimal(str(pnl)) if pnl else Decimal('0.0')
         self.pnlcomm = self.pnl - self.commission
 
-        self.value = comminfo.getvaluesize(self.size, self.price)
+        self.value = Decimal(str(comminfo.getvaluesize(self.size, float(self.price))))
 
         # Update the history if needed
         if self.historyon:
@@ -307,5 +309,5 @@ class Trade(object):
                 self.status, dt0, self.barlen,
                 self.size, self.price, self.value,
                 self.pnl, self.pnlcomm, self.data._tz)
-            histentry.doupdate(order, size, price, commission)
+            histentry.doupdate(order, size, price_dec, Decimal(str(commission)) if commission else Decimal('0.0'))
             self.history.append(histentry)
