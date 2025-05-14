@@ -21,8 +21,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-
-from copy import copy
+from decimal import Decimal
 
 
 class Position(object):
@@ -32,7 +31,7 @@ class Position(object):
 
     Member Attributes:
       - size (int): current size of the position
-      - price (float): current price of the position
+      - price (Decimal): current price of the position
 
     The Position instances can be tested using len(position) to see if size
     is not null
@@ -50,17 +49,17 @@ class Position(object):
         items.append('--- Position End')
         return '\n'.join(items)
 
-    def __init__(self, size=0, price=0.0):
+    def __init__(self, size=Decimal('0'), price=Decimal('0.0')):
         self.size = size
         if size:
-            self.price = self.price_orig = price
+            self.price = self.price_orig = Decimal(str(price))
         else:
-            self.price = 0.0
+            self.price = Decimal('0.0')
 
         self.adjbase = None
 
         self.upopened = size
-        self.upclosed = 0
+        self.upclosed = Decimal('0')
         self.set(size, price)
 
         self.updt = None
@@ -68,14 +67,14 @@ class Position(object):
     def fix(self, size, price):
         oldsize = self.size
         self.size = size
-        self.price = price
+        self.price = Decimal(str(price))
         return self.size == oldsize
 
     def set(self, size, price):
         if self.size > 0:
             if size > self.size:
                 self.upopened = size - self.size  # new 10 - old 5 -> 5
-                self.upclosed = 0
+                self.upclosed = Decimal('0')
             else:
                 # same side min(0, 3) -> 0 / reversal min(0, -3) -> -3
                 self.upopened = min(0, size)
@@ -86,7 +85,7 @@ class Position(object):
         elif self.size < 0:
             if size < self.size:
                 self.upopened = size - self.size  # ex: -5 - -3 -> -2
-                self.upclosed = 0
+                self.upclosed = Decimal('0')
             else:
                 # same side max(0, -5) -> 0 / reversal max(0, 5) -> 5
                 self.upopened = max(0, size)
@@ -94,16 +93,16 @@ class Position(object):
                 # reversal max(-10, -10 - 5) -> max(-10, -15) -> -10
                 self.upclosed = max(self.size, self.size - size)
 
-        else:  # self.size == 0
+        else:  # self.size == Decimal('0')
             self.upopened = self.size
-            self.upclosed = 0
+            self.upclosed = Decimal('0')
 
         self.size = size
         self.price_orig = self.price
         if size:
-            self.price = price
+            self.price = Decimal(str(price))
         else:
-            self.price = 0.0
+            self.price = Decimal('0.0')
 
         return self.size, self.price, self.upopened, self.upclosed
 
@@ -111,7 +110,7 @@ class Position(object):
         return abs(self.size)
 
     def __bool__(self):
-        return bool(self.size != 0)
+        return bool(self.size != Decimal('0'))
 
     __nonzero__ = __bool__
 
@@ -131,7 +130,7 @@ class Position(object):
                 size < 0: A sell operation has taken place
                 size > 0: A buy operation has taken place
 
-            price (float):
+            price (Decimal):
                 Must always be positive to ensure consistency
 
         Returns:
@@ -160,45 +159,45 @@ class Position(object):
         '''
         self.datetime = dt  # record datetime update (datetime.datetime)
 
-        self.price_orig = self.price
-        oldsize = self.size
-        self.size += size
+        self.price_orig = Decimal(str(self.price))
+        oldsize = Decimal(str(self.size))
+        self.size += Decimal(str(size))
 
         if not self.size:
             # Update closed existing position
-            opened, closed = 0, size
-            self.price = 0.0
+            opened, closed = Decimal('0'), Decimal(str(size))
+            self.price = Decimal('0.0')
         elif not oldsize:
             # Update opened a position from 0
-            opened, closed = size, 0
-            self.price = price
+            opened, closed = Decimal(str(size)), Decimal('0')
+            self.price = Decimal(str(price))
         elif oldsize > 0:  # existing "long" position updated
 
             if size > 0:  # increased position
-                opened, closed = size, 0
-                self.price = (self.price * oldsize + size * price) / self.size
+                opened, closed = Decimal(str(size)), Decimal('0')
+                self.price = (self.price * Decimal(str(oldsize)) + Decimal(str(size)) * Decimal(str(price))) / Decimal(str(self.size))
 
             elif self.size > 0:  # reduced position
-                opened, closed = 0, size
+                opened, closed = Decimal('0'), Decimal(str(size))
                 # self.price = self.price
 
             else:  # self.size < 0 # reversed position form plus to minus
                 opened, closed = self.size, -oldsize
-                self.price = price
+                self.price = Decimal(str(price))
 
         else:  # oldsize < 0 - existing short position updated
 
             if size < 0:  # increased position
-                opened, closed = size, 0
-                self.price = (self.price * oldsize + size * price) / self.size
+                opened, closed = Decimal(str(size)), Decimal('0')
+                self.price = (self.price * Decimal(str(oldsize)) + Decimal(str(size)) * Decimal(str(price))) / Decimal(str(self.size))
 
             elif self.size < 0:  # reduced position
-                opened, closed = 0, size
+                opened, closed = Decimal('0'), Decimal('size')
                 # self.price = self.price
 
             else:  # self.size > 0 - reversed position from minus to plus
                 opened, closed = self.size, -oldsize
-                self.price = price
+                self.price = Decimal(str(price))
 
         self.upopened = opened
         self.upclosed = closed
