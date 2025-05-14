@@ -21,12 +21,11 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+from decimal import Decimal
+
 from backtrader.comminfo import CommInfoBase
 from backtrader.metabase import MetaParams
 from backtrader.utils.py3 import with_metaclass
-
-from . import fillers as fillers
-from . import fillers as filler
 
 
 class MetaBroker(MetaParams):
@@ -97,11 +96,11 @@ class BrokerBase(with_metaclass(MetaBroker, object)):
         other ``CommissionInfo`` scheme can be found
         '''
 
-        comm = CommInfoBase(commission=commission, margin=margin, mult=mult,
+        comm = CommInfoBase(commission=Decimal(str(commission)), margin=margin, mult=Decimal(str(mult)),
                             commtype=commtype, stocklike=stocklike,
                             percabs=percabs,
-                            interest=interest, interest_long=interest_long,
-                            leverage=leverage, automargin=automargin)
+                            interest=Decimal(str(interest)), interest_long=interest_long,
+                            leverage=Decimal(str(leverage)), automargin=automargin)
         self.comminfo[name] = comm
 
     def addcommissioninfo(self, comminfo, name=None):
