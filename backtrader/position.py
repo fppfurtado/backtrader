@@ -192,7 +192,7 @@ class Position(object):
                 self.price = (self.price * Decimal(str(oldsize)) + Decimal(str(size)) * Decimal(str(price))) / Decimal(str(self.size))
 
             elif self.size < 0:  # reduced position
-                opened, closed = Decimal('0'), Decimal('size')
+                opened, closed = Decimal('0'), Decimal(size)
                 # self.price = self.price
 
             else:  # self.size > 0 - reversed position from minus to plus
