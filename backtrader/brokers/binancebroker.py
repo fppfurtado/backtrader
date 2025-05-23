@@ -151,7 +151,7 @@ class BinanceBroker(BackBroker):
     def add_cash(self, cash):
         self._store.get_balance()
         
-        if self.get_cash() + cash <= self._store._cash:
+        if self.get_cash() + Decimal(cash) <= self._store._cash:
             super().add_cash(cash)
 
     def next(self):
