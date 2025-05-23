@@ -2,10 +2,9 @@ from collections import deque
 
 import pandas as pd
 
+from backtrader import TimeFrame as tf
 from backtrader.feed import DataBase
 from backtrader.utils import date2num
-
-from backtrader import TimeFrame as tf
 
 
 class BinanceData(DataBase):
@@ -31,6 +30,7 @@ class BinanceData(DataBase):
         if 'LiveBars' in kwargs: self.LiveBars = kwargs['LiveBars']
 
         self._store = store
+        self._store.symbols.append(self.symbol)
         self._data = deque()
 
         # print("Ok", self.timeframe, self.compression, self.start_date, self._store, self.LiveBars, self.symbol)
