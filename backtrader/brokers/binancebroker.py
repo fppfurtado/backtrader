@@ -139,7 +139,7 @@ class BinanceBroker(BackBroker):
         
     def set_cash(self, cash):
         '''Sets the cash parameter (alias: ``setcash``)'''
-        self._store.get_balance()
+        self._store._get_balance()
 
         binance_cash = self._store._cash
         new_cash = cash if cash <= binance_cash else binance_cash
@@ -149,7 +149,7 @@ class BinanceBroker(BackBroker):
     setcash = set_cash
 
     def add_cash(self, cash):
-        self._store.get_balance()
+        self._store._get_balance()
         
         if self.get_cash() + Decimal(cash) <= self._store._cash:
             super().add_cash(cash)

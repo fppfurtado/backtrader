@@ -42,7 +42,7 @@ class BinanceStore(object):
 
         self._cash = 0
         self._value = 0
-        self.get_balance()
+        self._get_balance()
 
         self._asset_filters = {}
 
@@ -141,11 +141,13 @@ class BinanceStore(object):
             print("Error:", e)
         return balance, symbol  # float(balance['locked'])
 
-    def get_balance(self, ):
+    def _get_balance(self, ):
         """Balance in USDT for example - in coin target"""
         free, locked = self.get_asset_balance(self.coin_target)
         self._cash = free
         self._value = free + locked
+
+        return self._value
 
     def get_filters(self, symbol):
         if not self._asset_filters:
