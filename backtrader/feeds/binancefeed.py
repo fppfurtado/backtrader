@@ -1,3 +1,4 @@
+import queue
 from collections import deque
 
 import pandas as pd
@@ -15,7 +16,7 @@ class BinanceData(DataBase):
     # States for the Finite State Machine in _load
     _ST_LIVE, _ST_HISTORBACK, _ST_OVER = range(3)
 
-    def __init__(self, store, **kwargs):  # def __init__(self, store, timeframe, compression, start_date, LiveBars):
+    def __init__(self, store, data_timeout=None, **kwargs):  # def __init__(self, store, timeframe, compression, start_date, LiveBars):
         # default values
         self.timeframe = tf.Minutes
         self.compression = 1
@@ -31,7 +32,8 @@ class BinanceData(DataBase):
 
         self._store = store
         self._store.symbols.append(self.symbol)
-        self._data = deque()
+        self._data = queue.Queue()
+        self.data_timeout = data_timeout
 
         # print("Ok", self.timeframe, self.compression, self.start_date, self._store, self.LiveBars, self.symbol)
 
@@ -40,7 +42,16 @@ class BinanceData(DataBase):
         if msg['e'] == 'kline':
             if msg['k']['x']:  # Is closed
                 kline = self._parser_to_kline(msg['k']['t'], msg['k'])
-                self._data.extend(kline.values.tolist())
+                row = kline.iloc[0]
+
+                self._data.put((
+                    row['timestamp'],  # datetime64[ms]
+                    row['open'],
+                    row['high'],
+                    row['low'],
+                    row['close'],
+                    row['volume']
+                ))
         elif msg['e'] == 'error':
             raise msg
 
@@ -57,8 +68,8 @@ class BinanceData(DataBase):
 
     def _load_kline(self):
         try:
-            kline = self._data.popleft()
-        except IndexError:
+            kline = self._data.get(timeout=self.data_timeout)
+        except queue.Empty:
             return None
 
         timestamp, open_, high, low, close, volume = kline
@@ -140,7 +151,8 @@ class BinanceData(DataBase):
                 df = pd.DataFrame(klines)
                 df.drop(df.columns[[6, 7, 8, 9, 10, 11]], axis=1, inplace=True)  # Remove unnecessary columns
                 df = self._parser_dataframe(df)
-                self._data.extend(df.values.tolist())
+                for row in df.values.tolist():
+                    self._data.put(row)
             except Exception as e:
                 print("Exception (try set start_date in utc format):", e)
 
