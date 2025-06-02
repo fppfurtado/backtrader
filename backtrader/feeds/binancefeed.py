@@ -53,7 +53,7 @@ class BinanceData(DataBase):
                     row['volume']
                 ))
         elif msg['e'] == 'error':
-            if "ConnectionClosedOK" in msg['m']:
+            if "ConnectionClosedOK" in msg['m'] or "1001" in msg['m']:
                 self._store.restart_socket()
 
             error_msg = msg.get('m', 'Unknown error from Binance WebSocket')

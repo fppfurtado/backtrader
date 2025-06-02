@@ -85,7 +85,11 @@ class BinanceBroker(BackBroker):
                         })
                         break
         elif msg['e'] == 'error':
-            raise msg
+            if "ConnectionClosedOK" in msg['m'] or "1001" in msg['m']:
+                self._store.restart_socket()
+
+            error_msg = msg.get('m', 'Unknown error from Binance WebSocket')
+            raise Exception(f"Binance WebSocket error: {error_msg}")
 
     def buy(self, owner, data, size, price=None, plimit=None,
             exectype=None, valid=None, tradeid=0, oco=None,

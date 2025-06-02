@@ -184,6 +184,7 @@ class BinanceStore(object):
         return self.binance.get_symbol_info(symbol)
 
     def restart_socket(self):
+        print(f'Trying to restart Websocket...')
         self.stop_socket()
         time.sleep(5)
         self.binance_socket.start()
