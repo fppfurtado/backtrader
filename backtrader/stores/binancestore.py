@@ -183,6 +183,11 @@ class BinanceStore(object):
     def get_symbol_info(self, symbol):
         return self.binance.get_symbol_info(symbol)
 
+    def restart_socket(self):
+        self.stop_socket()
+        time.sleep(5)
+        self.binance_socket.start()
+
     def stop_socket(self):
         self.binance_socket.stop()
         self.binance_socket.join(5)

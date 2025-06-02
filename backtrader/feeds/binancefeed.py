@@ -53,7 +53,11 @@ class BinanceData(DataBase):
                     row['volume']
                 ))
         elif msg['e'] == 'error':
-            raise msg
+            if "ConnectionClosedOK" in msg['m']:
+                self._store.restart_socket()
+
+            error_msg = msg.get('m', 'Unknown error from Binance WebSocket')
+            raise Exception(f"Binance WebSocket error: {error_msg}")
 
     def _load(self):
         if self._state == self._ST_OVER:
@@ -108,9 +112,10 @@ class BinanceData(DataBase):
             print(f"Live started for ticker: {self.symbol}")
 
             self._store.binance_socket.start_kline_socket(
-                self._handle_kline_socket_message,
-                self.symbol_info['symbol'],
-                self.interval)
+                callback=self._handle_kline_socket_message,
+                symbol=self.symbol_info['symbol'],
+                interval=self.interval
+            )
         else:
             self._state = self._ST_OVER
         
