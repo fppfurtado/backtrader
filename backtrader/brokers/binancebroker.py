@@ -43,6 +43,7 @@ class BinanceOrder(Order):
             else:
                 self.executed.remsize = Decimal(self.binance['executedQty'])
 
+
 class BinanceBroker(BackBroker):
     params = (
         ('cash', Decimal('1000.0')),
@@ -85,7 +86,7 @@ class BinanceBroker(BackBroker):
                         })
                         break
         elif msg['e'] == 'error':
-            if "ConnectionClosedOK" in msg['m'] or "1001" in msg['m']:
+            if "ConnectionClosedOK" in msg['m'] or "1001" in msg['m'] or "1011" in msg['m']:
                 self._store.restart_socket()
 
             error_msg = msg.get('m', 'Unknown error from Binance WebSocket')

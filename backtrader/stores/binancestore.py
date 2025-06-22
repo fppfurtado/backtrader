@@ -188,7 +188,7 @@ class BinanceStore(object):
         self.stop_socket()
         time.sleep(5)
         self.binance_socket.start()
+        self.binance_socket.start_user_socket(self._broker._handle_user_socket_message)
 
     def stop_socket(self):
         self.binance_socket.stop()
-        self.binance_socket.join(5)
