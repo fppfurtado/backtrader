@@ -29,12 +29,14 @@ class BinanceStore(object):
         (TimeFrame.Months, 1): KLINE_INTERVAL_1MONTH,
     }
 
-    def __init__(self, api_key, api_secret, coin_target, testnet=False, retries=5, tld='com'):  # coin_refer, coin_target
-        self.tesnet = testnet
-        self.binance = Client(api_key, api_secret, testnet=testnet, tld=tld)
-        self.binance_socket = ThreadedWebsocketManager(api_key, api_secret, testnet=testnet)
-        self.binance_socket.daemon = True
-        self.binance_socket.start()
+    def __init__(self, api_key, api_secret, coin_target, testnet=False, retries=5,
+                 tld='com'):  # coin_refer, coin_target
+        self.testnet = testnet
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.tld = tld
+
+        self.init_api_connection(api_key, api_secret, testnet, tld)
         # self.coin_refer = coin_refer
         self.coin_target = coin_target  # USDT
         # self.symbol = coin_refer + coin_target
@@ -50,6 +52,13 @@ class BinanceStore(object):
         self._broker = None
         self._data = None
         self._datas = {}
+
+    def init_api_connection(self, api_key, api_secret, testnet, tld):
+        if api_key and api_secret:
+            self.binance = Client(api_key, api_secret, testnet=testnet, tld=tld)
+            self.binance_socket = ThreadedWebsocketManager(api_key, api_secret, testnet=testnet)
+            self.binance_socket.daemon = True
+            self.binance_socket.start()
 
     def _format_value(self, value, step):
         precision = step.find('1') - 1
@@ -187,8 +196,8 @@ class BinanceStore(object):
         print(f'Trying to restart Websocket...')
         self.stop_socket()
         time.sleep(5)
-        self.binance_socket.start()
-        self.binance_socket.start_user_socket(self._broker._handle_user_socket_message)
+        self.init_api_connection(self.api_key, self.api_secret, self.testnet, self.tld)
+        self.binance_socket.start_user_socket(callback=self._broker._handle_user_socket_message)
 
     def stop_socket(self):
         self.binance_socket.stop()
