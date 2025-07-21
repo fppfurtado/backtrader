@@ -200,4 +200,13 @@ class BinanceStore(object):
         self.binance_socket.start_user_socket(callback=self._broker._handle_user_socket_message)
 
     def stop_socket(self):
-        self.binance_socket.stop()
+        try:
+            if hasattr(self, 'binance_socket') and self.binance_socket:
+                self.binance_socket.stop()
+                self.binance_socket = None  # Explicitly mark as closed
+                print("WebSocket stopped successfully.")
+            else:
+                print("WebSocket was already stopped.")
+        except Exception as e:
+            print(f"Error stopping WebSocket: {e}")
+            self.binance_socket = None  # Force cleanup even if error
