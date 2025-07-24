@@ -54,6 +54,7 @@ class BinanceBroker(BackBroker):
 
         self.order_trades = deque(maxlen=100)
         self._store = store
+        self._store._broker = self
         self._store.binance_socket.start_user_socket(self._handle_user_socket_message)
 
     def init(self):
